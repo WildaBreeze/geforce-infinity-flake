@@ -4,92 +4,65 @@ A Nix flake for [GeForce Infinity](https://github.com/AstralVixen/GeForce-Infini
 
 ## 🚀 Quick Start
 
-### 1. Enter Development Shell
+Just run:
 
 ```bash
-nix develop git+https://git.rislavarn.cloud/argus/geforce-infinity-flake
-```
-
-### 2. Clone and Build
-
-```bash
-git clone https://github.com/AstralVixen/GeForce-Infinity.git
-cd GeForce-Infinity
-npm install
-npm run build
-```
-
-### 3. Run the App
-
-```bash
-# From the project directory
-nix run
-
-# Or from anywhere
 nix run git+https://git.rislavarn.cloud/argus/geforce-infinity-flake
 ```
 
+That's it! The application will download and run automatically.
+
 ## 📦 Flake Outputs
 
-| Output | Description | Command |
-|--------|-------------|---------|
-| Dev shell | Build tools and dependencies | `nix develop` |
-| Package | FHS environment wrapper | `nix build .#geforce-infinity` |
-| App | Direct launcher | `nix run` |
+| Output | Description |
+|--------|-------------|
+| `packages.geforce-infinity` | The runnable application (FHS wrapper) |
+| `packages.geforce-infinity-bin` | The downloaded binaries |
+| `apps.default` | Same as `nix run` |
 
-## 🛠️ Development Environment
+## 🔧 Using in Your NixOS Config
 
-The flake provides:
-- **Node.js 22** - JavaScript runtime
-- **Bun** - Fast build tool (if your CPU supports AVX2)
-- **Electron** - Desktop framework
-- **Build tools** - Python, GCC, Make, pkg-config for native modules
+Add this flake as an input:
+
+```nix
+# flake.nix
+{
+  inputs.geforce-infinity-flake.url = "git+https://git.rislavarn.cloud/argus/geforce-infinity-flake";
+  
+  outputs = { self, nixpkgs, geforce-infinity-flake, ... }: {
+    nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
+      system = "x86_64-linux";
+      modules = [
+        {
+          environment.systemPackages = [
+            geforce-infinity-flake.packages.x86_64-linux.geforce-infinity
+          ];
+        }
+      ];
+    };
+  };
+}
+```
+
+Or use it with Home Manager:
+
+```nix
+# home.nix
+{ pkgs, inputs, ... }: {
+  home.packages = [ 
+    inputs.geforce-infinity-flake.packages.${pkgs.system}.geforce-infinity 
+  ];
+}
+```
 
 ## 📚 How It Works
 
-This flake uses **`buildFHSEnv`** to run Electron apps on NixOS. It creates an FHS (Filesystem Hierarchy Standard) environment that provides all the dynamic libraries Electron needs.
-
-For technical details on why this approach was chosen and how the flake is structured, see [TECHNICAL.md](./TECHNICAL.md).
-
-## 🔧 Customization
-
-### Adding More Libraries
-
-If the app needs additional libraries, add them to `targetPkgs` in `flake.nix`:
-
-```nix
-targetPkgs = pkgs: with pkgs; [
-  # Existing libraries...
-  libfoo
-  libbar
-];
-```
-
-### Using with Your NixOS Config
-
-```nix
-# In your configuration.nix
-environment.systemPackages = [
-  inputs.geforce-infinity-flake.packages.${pkgs.system}.geforce-infinity
-];
-```
+This flake downloads the official pre-built release and wraps it in an FHS (Filesystem Hierarchy Standard) environment. This solves the issue of running non-Nix binaries on NixOS by providing all required libraries in expected locations.
 
 ## 📖 Further Reading
 
 - [nix.dev: How to run non-nix executables](https://nix.dev/guides/faq#how-to-run-non-nix-executables)
-- [Nixpkgs: buildFHSEnv documentation](https://nixos.org/manual/nixpkgs/stable/#sec-fhs-environments)
 - [GeForce Infinity upstream repository](https://github.com/AstralVixen/GeForce-Infinity)
-
-## 🔍 Troubleshooting
-
-### "file not found" errors
-If you see errors about missing `.so` files, add the missing library to `targetPkgs` in `flake.nix`.
-
-### "Cannot open display" 
-Make sure you're running from a graphical session with `$DISPLAY` set.
-
-### Audio not working
-The FHS environment includes pulseaudio and pipewire libraries. Make sure your host system is running a sound server.
 
 ## License
 
