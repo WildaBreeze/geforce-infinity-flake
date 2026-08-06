@@ -1,0 +1,27 @@
+# Nix
+result
+result-*
+.direnv/
+
+# Node/Bun
+node_modules/
+dist/
+builds/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
