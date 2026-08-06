@@ -17,44 +17,63 @@
         # App version
         version = "1.2.2";
         
-        # Common library path for Electron apps
-        electronLibPath = pkgs.lib.makeLibraryPath [
-          pkgs.gtk3
-          pkgs.glib
-          pkgs.nss
-          pkgs.nspr
-          pkgs.dbus
-          pkgs.libxscrnsaver
-          pkgs.libxtst
-          pkgs.libxkbfile
-          pkgs.alsa-lib
-          pkgs.cups
-          pkgs.systemd
-          pkgs.libdrm
-          pkgs.mesa
-          pkgs.libxcomposite
-          pkgs.libxdamage
-          pkgs.libxrandr
-          pkgs.libxrender
-          pkgs.libxext
-          pkgs.libxfixes
-          pkgs.libxcb
-          pkgs.expat
-          pkgs.libxkbcommon
-          pkgs.at-spi2-atk
-          pkgs.at-spi2-core
-          pkgs.pango
-          pkgs.cairo
-          pkgs.gdk-pixbuf
-          pkgs.atk
-        ];
-      in
-      rec {
-        # Package: Wraps a pre-built version
-        # Note: This requires the user to build first using 'nix develop'
-        packages = {
-          geforce-infinity = pkgs.writeShellScriptBin "geforce-infinity" ''
-            export LD_LIBRARY_PATH="${electronLibPath}:$LD_LIBRARY_PATH"
+        # FHS environment for running the Electron app
+        # This solves the "non-nix executables" issue by providing
+        # a standard Linux environment with all required libraries
+        geforce-infinity-fhs = pkgs.buildFHSEnv {
+          name = "geforce-infinity";
+          targetPkgs = pkgs: with pkgs; [
+            # Electron runtime dependencies
+            electron
+            gtk3
+            glib
+            nss
+            nspr
+            dbus
+            libxscrnsaver
+            libxtst
+            libxkbfile
+            alsa-lib
+            cups
+            systemd
+            libdrm
+            mesa
+            libxcomposite
+            libxdamage
+            libxrandr
+            libxrender
+            libxext
+            libxfixes
+            libxcb
+            expat
+            libxkbcommon
+            at-spi2-atk
+            at-spi2-core
+            pango
+            cairo
+            gdk-pixbuf
+            atk
+            # Additional libraries commonly needed by Electron
+            libglvnd
+            vulkan-loader
+            wayland
+            libepoxy
+            # Audio
+            pulseaudio
+            pipewire
+            # Fonts
+            freetype
+            fontconfig
+            # Network
+            openssl
+            # Misc
+            udev
+            libusb1
+            libsecret
+            gsettings-desktop-schemas
+          ];
+          
+          runScript = pkgs.writeShellScript "geforce-infinity-launcher" ''
             export ELECTRON_IS_DEV=0
             export NODE_ENV=production
             
@@ -63,16 +82,39 @@
               exec ${electron}/bin/electron "$HOME/.local/share/geforce-infinity/dist/electron/main.js" --no-sandbox "$@"
             fi
             
-            # Check for project directory
-            if [ -d "dist" ]; then
-              exec ${electron}/bin/electron "./dist/electron/main.js" --no-sandbox "$@"
-            fi
+            # Check for project directory in common locations
+            for dir in "$HOME/projects/GeForce-Infinity" "$HOME/GeForce-Infinity" "./GeForce-Infinity"; do
+              if [ -d "$dir/dist" ]; then
+                exec ${electron}/bin/electron "$dir/dist/electron/main.js" --no-sandbox "$@"
+              fi
+            done
             
             echo "GeForce Infinity needs to be built first."
-            echo "Run: nix develop"
-            echo "Then: git clone https://github.com/AstralVixen/GeForce-Infinity.git"
-            echo "      cd GeForce-Infinity && npm install && npm run build"
+            echo ""
+            echo "Quick start:"
+            echo "  git clone https://github.com/AstralVixen/GeForce-Infinity.git"
+            echo "  cd GeForce-Infinity"
+            echo "  npm install && npm run build"
+            echo "  nix run"
             exit 1
+          '';
+          
+          meta = with pkgs.lib; {
+            description = "Enhanced GeForce NOW experience for Linux (FHS environment)";
+            homepage = "https://github.com/AstralVixen/GeForce-Infinity";
+            license = licenses.mit;
+            platforms = platforms.linux;
+            mainProgram = "geforce-infinity";
+          };
+        };
+      in
+      rec {
+        packages = {
+          inherit geforce-infinity-fhs;
+          
+          # Wrapper script that launches the FHS environment
+          geforce-infinity = pkgs.writeShellScriptBin "geforce-infinity" ''
+            exec ${geforce-infinity-fhs}/bin/geforce-infinity "$@"
           '';
           
           default = packages.geforce-infinity;
@@ -102,12 +144,12 @@
             echo "Quick start:"
             echo "  git clone https://github.com/AstralVixen/GeForce-Infinity.git"
             echo "  cd GeForce-Infinity"
-            echo "  npm install"
-            echo "  npm run build"
-            echo "  npm run start"
+            echo "  npm install && npm run build"
+            echo "  nix run"
             echo ""
-            echo "Note: If your CPU supports AVX2, you can use 'bun' instead of 'npm'"
-            echo "      for faster installs: bun install && bun run build"
+            echo "The built app will run in an FHS environment with all libraries available."
+            echo "This solves the 'non-nix executables' issue documented at:"
+            echo "  https://nix.dev/guides/faq#how-to-run-non-nix-executables"
             echo ""
           '';
         };
