@@ -24,6 +24,8 @@
             stripRoot = false;
           };
           
+          nativeBuildInputs = [ pkgs.makeWrapper ];
+          
           dontConfigure = true;
           dontBuild = true;
           
@@ -32,50 +34,34 @@
             cp -r ./* $out/share/geforce-infinity/
             
             mkdir -p $out/bin
-            ln -s $out/share/geforce-infinity/geforce-infinity $out/bin/geforce-infinity-binary
+            
+            # Wrap the binary with all required library paths
+            makeWrapper $out/share/geforce-infinity/geforce-infinity $out/bin/geforce-infinity-binary \
+              --prefix LD_LIBRARY_PATH : "${pkgs.lib.makeLibraryPath [
+                pkgs.gtk3 pkgs.glib pkgs.nss pkgs.nspr pkgs.dbus pkgs.libxscrnsaver
+                pkgs.libxtst pkgs.libxkbfile pkgs.alsa-lib pkgs.cups pkgs.systemd
+                pkgs.libdrm pkgs.mesa pkgs.libxcomposite pkgs.libxdamage
+                pkgs.libxrandr pkgs.libxrender pkgs.libxext pkgs.libxfixes
+                pkgs.libxcb pkgs.expat pkgs.libxkbcommon pkgs.at-spi2-atk
+                pkgs.at-spi2-core pkgs.pango pkgs.cairo pkgs.gdk-pixbuf pkgs.atk
+                pkgs.libglvnd pkgs.vulkan-loader pkgs.wayland pkgs.libepoxy
+                pkgs.pulseaudio pkgs.pipewire pkgs.freetype pkgs.fontconfig
+                pkgs.openssl pkgs.udev pkgs.libusb1 pkgs.libsecret
+                pkgs.gsettings-desktop-schemas pkgs.libx11
+              ]}:$out/share/geforce-infinity" \
+              --add-flags "--no-sandbox"
           '';
-        };
-        
-        # FHS environment wrapper - runs the pre-built binary
-        geforce-infinity-fhs = pkgs.buildFHSEnv {
-          name = "geforce-infinity";
-          targetPkgs = pkgs: with pkgs; [
-            # Electron runtime dependencies
-            gtk3 glib nss nspr dbus alsa-lib cups systemd libdrm mesa
-            libx11 libxscrnsaver libxtst libxkbfile libxcomposite libxdamage
-            libxrandr libxrender libxext libxfixes libxcb libxkbcommon
-            at-spi2-atk at-spi2-core pango cairo gdk-pixbuf atk
-            libglvnd vulkan-loader wayland libepoxy
-            pulseaudio pipewire freetype fontconfig openssl
-            udev libusb1 libsecret gsettings-desktop-schemas
-            mesa.drivers  # for libgbm
-            bubblewrap
-          ];
-          
-          runScript = pkgs.writeShellScript "geforce-infinity-launcher" ''
-            export LD_LIBRARY_PATH="/run/opengl-driver/lib:/run/opengl-driver-32/lib:${pkgs.mesa}/lib:${pkgs.mesa.drivers}/lib"
-            exec ${geforce-infinity-bin}/share/geforce-infinity/geforce-infinity --no-sandbox "$@"
-          '';
-          
-          meta = with pkgs.lib; {
-            description = "Enhanced GeForce NOW experience for Linux";
-            homepage = "https://github.com/AstralVixen/GeForce-Infinity";
-            license = licenses.mit;
-            platforms = platforms.linux;
-            mainProgram = "geforce-infinity";
-          };
         };
       in
       {
         packages = {
-          geforce-infinity-bin = geforce-infinity-bin;
-          geforce-infinity = geforce-infinity-fhs;
-          default = geforce-infinity-fhs;
+          geforce-infinity = geforce-infinity-bin;
+          default = geforce-infinity-bin;
         };
 
         apps.default = {
           type = "app";
-          program = "${self.packages.${system}.geforce-infinity}/bin/geforce-infinity";
+          program = "${self.packages.${system}.geforce-infinity}/bin/geforce-infinity-binary";
         };
       });
 }
