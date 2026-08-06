@@ -13,9 +13,9 @@
         
         version = "1.2.2";
         
-        # Download pre-built release
-        geforce-infinity-bin = pkgs.stdenvNoCC.mkDerivation rec {
-          pname = "geforce-infinity-bin";
+        # Download pre-built release and patch it for NixOS
+        geforce-infinity = pkgs.stdenvNoCC.mkDerivation rec {
+          pname = "geforce-infinity";
           inherit version;
           
           src = pkgs.fetchzip {
@@ -24,7 +24,18 @@
             stripRoot = false;
           };
           
-          nativeBuildInputs = [ pkgs.makeWrapper ];
+          nativeBuildInputs = [ pkgs.autoPatchelfHook pkgs.makeWrapper ];
+          
+          buildInputs = with pkgs; [
+            # Libraries the binary needs
+            gtk3 glib nss nspr dbus libxscrnsaver libxtst libxkbfile alsa-lib
+            cups systemd libdrm mesa libxcomposite libxdamage libxrandr
+            libxrender libxext libxfixes libxcb libxkbcommon at-spi2-atk
+            at-spi2-core pango cairo gdk-pixbuf atk libglvnd vulkan-loader
+            wayland libepoxy pulseaudio pipewire freetype fontconfig openssl
+            udev libusb1 libsecret gsettings-desktop-schemas libx11
+            stdenv.cc.cc  # for libstdc++
+          ];
           
           dontConfigure = true;
           dontBuild = true;
@@ -35,33 +46,47 @@
             
             mkdir -p $out/bin
             
-            # Wrap the binary with all required library paths
-            makeWrapper $out/share/geforce-infinity/geforce-infinity $out/bin/geforce-infinity-binary \
-              --prefix LD_LIBRARY_PATH : "${pkgs.lib.makeLibraryPath [
-                pkgs.gtk3 pkgs.glib pkgs.nss pkgs.nspr pkgs.dbus pkgs.libxscrnsaver
-                pkgs.libxtst pkgs.libxkbfile pkgs.alsa-lib pkgs.cups pkgs.systemd
-                pkgs.libdrm pkgs.mesa pkgs.libxcomposite pkgs.libxdamage
-                pkgs.libxrandr pkgs.libxrender pkgs.libxext pkgs.libxfixes
-                pkgs.libxcb pkgs.expat pkgs.libxkbcommon pkgs.at-spi2-atk
-                pkgs.at-spi2-core pkgs.pango pkgs.cairo pkgs.gdk-pixbuf pkgs.atk
-                pkgs.libglvnd pkgs.vulkan-loader pkgs.wayland pkgs.libepoxy
-                pkgs.pulseaudio pkgs.pipewire pkgs.freetype pkgs.fontconfig
-                pkgs.openssl pkgs.udev pkgs.libusb1 pkgs.libsecret
-                pkgs.gsettings-desktop-schemas pkgs.libx11
-              ]}:$out/share/geforce-infinity" \
-              --add-flags "--no-sandbox"
+            # Create wrapper script that sets up the environment
+            cat > $out/bin/geforce-infinity <<'EOF'
+            #!/bin/sh
+            export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [
+              pkgs.gtk3 pkgs.glib pkgs.nss pkgs.nspr pkgs.dbus pkgs.libxscrnsaver
+              pkgs.libxtst pkgs.libxkbfile pkgs.alsa-lib pkgs.cups pkgs.systemd
+              pkgs.libdrm pkgs.mesa pkgs.libxcomposite pkgs.libxdamage
+              pkgs.libxrandr pkgs.libxrender pkgs.libxext pkgs.libxfixes
+              pkgs.libxcb pkgs.libxkbcommon pkgs.at-spi2-atk pkgs.at-spi2-core
+              pkgs.pango pkgs.cairo pkgs.gdk-pixbuf pkgs.atk pkgs.libglvnd
+              pkgs.vulkan-loader pkgs.wayland pkgs.libepoxy pkgs.pulseaudio
+              pkgs.pipewire pkgs.freetype pkgs.fontconfig pkgs.openssl
+              pkgs.udev pkgs.libusb1 pkgs.libsecret pkgs.gsettings-desktop-schemas
+              pkgs.libx11 pkgs.stdenv.cc.cc
+            ]}:@out@/share/geforce-infinity"
+            
+            exec @out@/share/geforce-infinity/geforce-infinity --no-sandbox "$@"
+            EOF
+            
+            substituteInPlace $out/bin/geforce-infinity --subst-var out
+            chmod +x $out/bin/geforce-infinity
           '';
+          
+          meta = with pkgs.lib; {
+            description = "Enhanced GeForce NOW experience for Linux";
+            homepage = "https://github.com/AstralVixen/GeForce-Infinity";
+            license = licenses.mit;
+            platforms = platforms.linux;
+            mainProgram = "geforce-infinity";
+          };
         };
       in
       {
         packages = {
-          geforce-infinity = geforce-infinity-bin;
-          default = geforce-infinity-bin;
+          inherit geforce-infinity;
+          default = geforce-infinity;
         };
 
         apps.default = {
           type = "app";
-          program = "${self.packages.${system}.geforce-infinity}/bin/geforce-infinity-binary";
+          program = "${self.packages.${system}.geforce-infinity}/bin/geforce-infinity";
         };
       });
 }
