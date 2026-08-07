@@ -13,6 +13,19 @@
         
         version = "1.2.2";
         
+        libraryPath = pkgs.lib.makeLibraryPath [
+          pkgs.gtk3 pkgs.glib pkgs.nss pkgs.nspr pkgs.dbus pkgs.libxscrnsaver
+          pkgs.libxtst pkgs.libxkbfile pkgs.alsa-lib pkgs.cups pkgs.systemd
+          pkgs.libdrm pkgs.mesa pkgs.libxcomposite pkgs.libxdamage
+          pkgs.libxrandr pkgs.libxrender pkgs.libxext pkgs.libxfixes
+          pkgs.libxcb pkgs.libxkbcommon pkgs.at-spi2-atk pkgs.at-spi2-core
+          pkgs.pango pkgs.cairo pkgs.gdk-pixbuf pkgs.atk pkgs.libglvnd
+          pkgs.vulkan-loader pkgs.wayland pkgs.libepoxy pkgs.pulseaudio
+          pkgs.pipewire pkgs.freetype pkgs.fontconfig pkgs.openssl
+          pkgs.udev pkgs.libusb1 pkgs.libsecret pkgs.gsettings-desktop-schemas
+          pkgs.libx11 pkgs.stdenv.cc.cc
+        ];
+        
         # Download pre-built release and patch it for NixOS
         geforce-infinity = pkgs.stdenvNoCC.mkDerivation rec {
           pname = "geforce-infinity";
@@ -47,26 +60,9 @@
             mkdir -p $out/bin
             
             # Create wrapper script that sets up the environment
-            cat > $out/bin/geforce-infinity <<'EOF'
-            #!/bin/sh
-            export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [
-              pkgs.gtk3 pkgs.glib pkgs.nss pkgs.nspr pkgs.dbus pkgs.libxscrnsaver
-              pkgs.libxtst pkgs.libxkbfile pkgs.alsa-lib pkgs.cups pkgs.systemd
-              pkgs.libdrm pkgs.mesa pkgs.libxcomposite pkgs.libxdamage
-              pkgs.libxrandr pkgs.libxrender pkgs.libxext pkgs.libxfixes
-              pkgs.libxcb pkgs.libxkbcommon pkgs.at-spi2-atk pkgs.at-spi2-core
-              pkgs.pango pkgs.cairo pkgs.gdk-pixbuf pkgs.atk pkgs.libglvnd
-              pkgs.vulkan-loader pkgs.wayland pkgs.libepoxy pkgs.pulseaudio
-              pkgs.pipewire pkgs.freetype pkgs.fontconfig pkgs.openssl
-              pkgs.udev pkgs.libusb1 pkgs.libsecret pkgs.gsettings-desktop-schemas
-              pkgs.libx11 pkgs.stdenv.cc.cc
-            ]}:@out@/share/geforce-infinity"
-            
-            exec @out@/share/geforce-infinity/geforce-infinity --no-sandbox "$@"
-            EOF
-            
-            substituteInPlace $out/bin/geforce-infinity --subst-var out
-            chmod +x $out/bin/geforce-infinity
+            makeWrapper $out/share/geforce-infinity/geforce-infinity $out/bin/geforce-infinity \
+              --prefix LD_LIBRARY_PATH : "${libraryPath}:$out/share/geforce-infinity" \
+              --add-flags "--no-sandbox"
             
             # Create .desktop file
             mkdir -p $out/share/applications
