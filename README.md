@@ -7,7 +7,7 @@ A Nix flake for [GeForce Infinity](https://github.com/AstralVixen/GeForce-Infini
 Just run:
 
 ```bash
-nix run git+https://git.rislavarn.cloud/argus/geforce-infinity-flake
+nix run github:WildaBreeze/geforce-infinity-flake
 ```
 
 That's it! The application will download and run automatically.
@@ -27,7 +27,7 @@ Add this flake as an input:
 ```nix
 # flake.nix
 {
-  inputs.geforce-infinity-flake.url = "git+https://git.rislavarn.cloud/argus/geforce-infinity-flake";
+  inputs.geforce-infinity-flake.url = "github:WildaBreeze/geforce-infinity-flake";
   
   outputs = { self, nixpkgs, geforce-infinity-flake, ... }: {
     nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
