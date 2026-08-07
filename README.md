@@ -66,4 +66,4 @@ This flake downloads the official pre-built release and wraps it in an FHS (File
 
 ## License
 
-MIT (same as upstream)
+[MIT](LICENSE.md) — same as the upstream GeForce Infinity project.
