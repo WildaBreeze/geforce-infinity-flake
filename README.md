@@ -16,8 +16,7 @@ That's it! The application will download and run automatically.
 
 | Output | Description |
 |--------|-------------|
-| `packages.geforce-infinity` | The runnable application (FHS wrapper) |
-| `packages.geforce-infinity-bin` | The downloaded binaries |
+| `packages.default` | The runnable application |
 | `apps.default` | Same as `nix run` |
 
 ## 🔧 Using in Your NixOS Config
@@ -35,7 +34,7 @@ Add this flake as an input:
       modules = [
         {
           environment.systemPackages = [
-            geforce-infinity-flake.packages.x86_64-linux.geforce-infinity
+            geforce-infinity-flake.packages.${system}.default
           ];
         }
       ];
@@ -50,7 +49,7 @@ Or use it with Home Manager:
 # home.nix
 { pkgs, inputs, ... }: {
   home.packages = [ 
-    inputs.geforce-infinity-flake.packages.${pkgs.system}.geforce-infinity 
+    inputs.geforce-infinity-flake.packages.${pkgs.stdenv.hostPlatform.system}.default
   ];
 }
 ```
