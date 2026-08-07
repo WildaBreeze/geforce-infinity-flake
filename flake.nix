@@ -67,6 +67,26 @@
             
             substituteInPlace $out/bin/geforce-infinity --subst-var out
             chmod +x $out/bin/geforce-infinity
+            
+            # Create .desktop file
+            mkdir -p $out/share/applications
+            cat > $out/share/applications/geforce-infinity.desktop <<EOF
+[Desktop Entry]
+Name=GeForce Infinity
+Comment=Enhanced GeForce NOW experience
+Exec=$out/bin/geforce-infinity
+Icon=geforce-infinity
+Type=Application
+Categories=Game;Network;
+Terminal=false
+StartupNotify=true
+EOF
+
+            # Copy icon if it exists
+            if [ -f "$out/share/geforce-infinity/resources/app/icon.png" ]; then
+              mkdir -p $out/share/icons/hicolor/256x256/apps
+              cp "$out/share/geforce-infinity/resources/app/icon.png" "$out/share/icons/hicolor/256x256/apps/geforce-infinity.png"
+            fi
           '';
           
           meta = with pkgs.lib; {
